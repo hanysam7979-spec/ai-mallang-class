@@ -80,7 +80,8 @@
   CC.ROW_Y = ROW_DEF.map(r => r.y);
   CC.MAX_SEAT = 36;
 
-  /* ── 기본 명단: 파이썬1반 36명 (7번 = 박성희) ──────────── */
+  /* ── 기본 명단: 5개 반 × 36명 (모든 반 같은 데모 이름, 7번 = 박성희) ── */
+  CC.CLASS_NAMES = ['꾸러기', '컴박사A', '컴박사B', '컴스타', '토요박사'];
   CC.DEMO_NAMES = [
     '김민준', '이서연', '박도윤', '최지우', '정하준', '강수아', '박성희', '임하은',
     '한예준', '오지호', '서지우', '신유준', '권민서', '황도현', '안서윤', '송지안',
@@ -92,16 +93,32 @@
   CC.DEMO_ABSENT = [4, 8, 13, 17, 22, 28, 32, 35];
 
   CC.makeDefaultRoster = function () {
-    return {
-      version: 3,
-      activeClass: '파이썬1반',
-      classes: {
-        '파이썬1반': {
-          teacher: '김하늘',
-          students: CC.DEMO_NAMES.map((name, i) => ({ num: i + 1, name }))
-        }
-      }
-    };
+    const teacher = (CC.defaultSettings && CC.defaultSettings().teacherName) || '김하늘';
+    const classes = {};
+    CC.CLASS_NAMES.forEach(name => {
+      classes[name] = {
+        teacher,
+        students: CC.DEMO_NAMES.map((n, i) => ({ num: i + 1, name: n }))
+      };
+    });
+    return { version: 3, activeClass: CC.CLASS_NAMES[0], classes };
+  };
+
+  /* 예전 기본값(‘파이썬1반’ 한 반만 들어 있는 데모 명단)인지 판별 */
+  CC.isLegacyDefaultRoster = function (r) {
+    if (!r || !r.classes) return false;
+    const keys = Object.keys(r.classes);
+    if (keys.length !== 1 || keys[0] !== '파이썬1반') return false;
+    const cls = r.classes['파이썬1반'];
+    if (!cls || !Array.isArray(cls.students) || cls.students.length !== CC.DEMO_NAMES.length) return false;
+    return cls.students.every((s, i) => s && s.num === i + 1 && s.name === CC.DEMO_NAMES[i]);
+  };
+
+  /* 데모 명단을 그대로 쓰는 반인지 (가상 결석생 연출 여부 판단) */
+  CC.isDemoClass = function (classId) {
+    const cls = CC.roster && CC.roster.classes && CC.roster.classes[classId];
+    if (!cls || !Array.isArray(cls.students) || cls.students.length !== CC.DEMO_NAMES.length) return false;
+    return cls.students.every((s, i) => s && s.num === i + 1 && s.name === CC.DEMO_NAMES[i]);
   };
 
   /* ── 저장소 ────────────────────────────────────────────── */
@@ -179,6 +196,11 @@
   CC.roster = CC.store.get(K.roster, null) || CC.makeDefaultRoster();
   if (!CC.roster || !CC.roster.classes || !Object.keys(CC.roster.classes).length) {
     CC.roster = CC.makeDefaultRoster();
+    CC.store.set(K.roster, CC.roster);
+  } else if (CC.isLegacyDefaultRoster(CC.roster)) {
+    /* 예전 ‘파이썬1반’ 한 반짜리 기본값이 저장돼 있으면 새 5개 반 명단으로 갱신 */
+    CC.roster = CC.makeDefaultRoster();
+    CC.store.set(K.roster, CC.roster);
   }
   CC.saveRoster = function (r) {
     if (r) CC.roster = r;

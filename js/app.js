@@ -269,7 +269,7 @@
     CC.scene.build(occupiedSet(), CC.me ? CC.me.num : 0);
 
     const list = CC.classList(CC.roster.activeClass);
-    const absent = (CC.roster.activeClass === '파이썬1반' && list.length >= 36) ? CC.DEMO_ABSENT : [];
+    const absent = (CC.isDemoClass(CC.roster.activeClass) && list.length >= 36) ? CC.DEMO_ABSENT : [];
     CC.rt.stop();
     CC.rt.init({
       classId: CC.roster.activeClass,

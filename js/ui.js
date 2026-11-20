@@ -491,7 +491,7 @@
           if (CC.app.refreshLoginSelect) CC.app.refreshLoginSelect();
           if (CC.app.onRosterChange) CC.app.onRosterChange();
           CC.sfx.pop();
-          UI.toast('기본 명단(파이썬1반 36명)으로 되돌렸어요');
+          UI.toast('기본 명단(5개 반 · 각 36명)으로 되돌렸어요');
         };
       }
     });
