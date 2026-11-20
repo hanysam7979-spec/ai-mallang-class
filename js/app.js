@@ -403,12 +403,16 @@
     });
 
     state.players.forEach(pl => {
-      if (pl.nx == null) return;
-      const k = Math.min(1, dt * 9);
-      const dx = pl.nx - pl.x, dy = pl.ny - pl.y;
-      pl.x += dx * k; pl.y += dy * k;
-      pl.walk = Math.hypot(dx, dy) > 1.2 ? Math.sin(CC.now() / 90) : 0;
-      if (Math.abs(dy) > 1) pl.dir = dy < 0 ? 'back' : 'front';
+      if (pl.isMe) return;
+      /* 말풍선·애니메이션 수명과 깊이를 먼저 갱신 (원격 친구가 화면에 그려지도록) */
+      CC.player.update(pl, dt);
+      if (pl.nx != null) {
+        const k = Math.min(1, dt * 9);
+        const dx = pl.nx - pl.x, dy = pl.ny - pl.y;
+        pl.x += dx * k; pl.y += dy * k;
+        pl.walk = Math.hypot(dx, dy) > 1.2 ? Math.sin(CC.now() / 90) : 0;
+        if (Math.abs(dy) > 1) pl.dir = dy < 0 ? 'back' : 'front';
+      }
     });
 
     CC.ui.updateCounts(APP.presentSet().size, CC.classTotal());

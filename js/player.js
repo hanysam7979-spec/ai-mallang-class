@@ -282,6 +282,17 @@
     }
   };
 
+  /* ── 그리기 순서(깊이) 계산 — 원격 친구에게도 써야 서 있는 모습이 그려집니다 ── */
+  P.updateDepth = function (p) {
+    if (p.seatRow == null) {
+      let d = 0;
+      for (let i = 0; i < CC.ROW_Y.length; i++) if (CC.ROW_Y[i] < p.y - 8) d++;
+      p.depth = d;
+    } else {
+      p.depth = p.seatRow;
+    }
+  };
+
   /* ── WASD 이동 ─────────────────────────────────────────── */
   P.keyMove = function (p, keys, dt) {
     let dx = 0, dy = 0;
