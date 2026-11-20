@@ -21,7 +21,10 @@
     room: 'classroom',
     demo: true,
     classId: '',
-    lastErr: ''
+    lastErr: '',
+    hbTimer: null,
+    retryTimer: null,
+    retryCount: 0
   };
 
   RT.id = () => st.selfId;
@@ -71,9 +74,16 @@
   };
 
   RT.stop = function () {
-    try { if (st.channel) st.client && st.client.removeChannel(st.channel); } catch (e) {}
+    const ch = st.channel;
+    st.channel = null;                       /* 이전 채널 콜백이 상태를 덮어쓰지 않도록 먼저 비웁니다 */
+    try { if (ch && st.client) st.client.removeChannel(ch); } catch (e) {}
+    try { if (st.client && st.client.realtime) st.client.realtime.disconnect(); } catch (e) {}
+    st.client = null;
     try { if (st.bc) st.bc.close(); } catch (e) {}
-    st.channel = null; st.bc = null; st.peers.clear();
+    if (st.hbTimer) { clearInterval(st.hbTimer); st.hbTimer = null; }
+    if (st.retryTimer) { clearTimeout(st.retryTimer); st.retryTimer = null; }
+    st.retryCount = 0;
+    st.bc = null; st.peers.clear();
     st.connected = false; st.mode = 'local'; st.lastErr = '';
   };
 
@@ -94,6 +104,7 @@
       st.channel = ch;
 
       ch.on('presence', { event: 'sync' }, () => {
+        if (st.channel !== ch) return;
         const map = ch.presenceState();
         const seen = new Set();
         Object.keys(map).forEach(keyKey => {
@@ -146,15 +157,31 @@
       ch.on('broadcast', { event: 'roster' }, ({ payload }) => emit('roster', payload));
       ch.on('broadcast', { event: 'screen' }, ({ payload }) => emit('screen', payload));
 
+      /* 서버가 보내는 system 오류(예: presence 속도 제한)를 기록만 합니다 */
+      ch.on('system', (msg) => {
+        if (st.channel !== ch) return;
+        if (msg && msg.status === 'error') st.lastErr = String(msg.message || 'system');
+      });
+
       ch.subscribe(async (status) => {
+        if (st.channel !== ch) return;          /* 이미 교체된 옛 채널의 콜백은 무시 */
         if (status === 'SUBSCRIBED') {
           st.connected = true;
+          st.retryCount = 0;
+          st.lastErr = '';
           await trackSelf();
+          if (st.hbTimer) clearInterval(st.hbTimer);
+          /* 접속만 하고 가만히 있어도 8초마다 위치 정보를 새로 알려 줍니다 */
+          st.hbTimer = setInterval(() => {
+            if (st.connected && st.channel === ch) trackSelf();
+          }, 8000);
           emit('status', { mode: 'supabase', connected: true });
         } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
           st.connected = false;
           st.lastErr = status;
+          if (st.hbTimer) { clearInterval(st.hbTimer); st.hbTimer = null; }
           emit('status', { mode: 'supabase', connected: false, error: status });
+          scheduleReconnect();
         }
       });
       return true;
@@ -165,8 +192,40 @@
     }
   }
 
+  /* 연결이 끊기면 조용히 다시 붙습니다 (최대 5회, 점점 간격을 늘림) */
+  function scheduleReconnect() {
+    if (st.retryTimer || st.retryCount >= 5) return;
+    st.retryTimer = setTimeout(() => {
+      st.retryTimer = null;
+      st.retryCount++;
+      const S = CC.settings;
+      if (!S.supabaseUrl || !S.supabaseKey || !st.me) return;
+      const old = st.channel;
+      st.channel = null;
+      try { if (old && st.client) st.client.removeChannel(old); } catch (e) {}
+      try { if (st.client && st.client.realtime) st.client.realtime.disconnect(); } catch (e) {}
+      let ok = false;
+      try { ok = connectSupabase(S.supabaseUrl, S.supabaseKey, st.me); } catch (e) { ok = false; }
+      if (!ok) scheduleReconnect();
+    }, 3000 * Math.min(4, st.retryCount + 1));
+  }
+
+  /* presence 전송은 1.2초에 한 번까지만 (Supabase presence 속도 제한 회피) */
+  let trackAt = 0, trackTimer = null;
+  function trackSelfSoon() {
+    const wait = 1200 - (CC.now() - trackAt);
+    if (wait <= 0) { trackAt = CC.now(); trackSelf(); return; }
+    if (trackTimer) return;
+    trackTimer = setTimeout(() => {
+      trackTimer = null;
+      trackAt = CC.now();
+      trackSelf();
+    }, wait);
+  }
+
   async function trackSelf() {
     if (!st.channel || !st.me) return;
+    trackAt = CC.now();
     const m = st.me;
     try {
       await st.channel.track({
@@ -353,14 +412,18 @@
   let lastSend = 0, lastSig = '', lastPos = { x: 0, y: 0 };
   RT.setMe = function (me, force) {
     st.me = me;
-    const idSig = [me.num, me.name, me.teacher, me.v.face, me.v.hair, me.v.shirt, me.v.style, me.seated, me.seatRow].join('|');
+    const idSig = [me.num, me.name, me.teacher, me.seated, me.seatRow, me.pose, me.dir,
+      me.v.sp, me.v.face, me.v.hair, me.v.shirt, me.v.style].join('|');
     const moved = Math.abs(me.x - lastPos.x) + Math.abs(me.y - lastPos.y) > 1.5;
     const now = CC.now();
     if (!force && idSig === lastSig && !(moved && now - lastSend > 150)) return;
+    const sigChanged = idSig !== lastSig;
     lastSig = idSig;
     lastPos = { x: me.x, y: me.y };
     lastSend = now;
-    if (st.mode === 'supabase') trackSelf();
+    /* 자리·포즈·아바타 같은 "상태"가 바뀔 때만 presence 를 보내고,
+       움직임은 pushPos() 의 broadcast 로 전달합니다(속도 제한 회피) */
+    if (st.mode === 'supabase') { if (sigChanged || force) trackSelfSoon(); }
     else if (st.bc) post({ type: 'pos', me: RT.snapshotMe() });
   };
 
