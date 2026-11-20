@@ -184,8 +184,8 @@
   function freeNum(classId) {
     const list = CC.classList(classId);
     const used = new Set(list.map(s => s.num));
-    for (let i = 1; i <= 36; i++) if (!used.has(i)) return i;
-    return CC.randInt(1, 36);
+    for (let i = 1; i <= CC.MAX_SEAT; i++) if (!used.has(i)) return i;
+    return CC.randInt(1, CC.MAX_SEAT);
   }
 
   function enterAsGuest(name, classId) {
@@ -226,7 +226,7 @@
         syncMe();
       });
     } else {
-      /* 36명 초과 — 통로에 서 있기 */
+      /* 42명 초과 — 통로에 서 있기 */
       CC.player.walkTo(me, 700, 1050 - 20, () => {
         CC.player.bubble(me, '자리가 없어 통로에 섰어요', 3);
       });
@@ -269,7 +269,7 @@
     CC.scene.build(occupiedSet(), CC.me ? CC.me.num : 0);
 
     const list = CC.classList(CC.roster.activeClass);
-    const absent = (CC.isDemoClass(CC.roster.activeClass) && list.length >= 36) ? CC.DEMO_ABSENT : [];
+    const absent = (CC.isDemoClass(CC.roster.activeClass) && list.length >= CC.DEMO_NAMES.length) ? CC.DEMO_ABSENT : [];
     CC.rt.stop();
     CC.rt.init({
       classId: CC.roster.activeClass,
@@ -493,13 +493,13 @@
       let tp = null;
       state.players.forEach(p => { if (p.teacher) tp = p; });
       if (tp) {
-        teacher = { x: CC.TEACHER.x, y: CC.TEACHER.y, h: 160, v: tp.v, name: (tp.name || '김하늘') + ' 선생님' };
+        teacher = { x: CC.TEACHER.x, y: CC.TEACHER.y, h: 160, v: tp.v, name: (tp.name || '하니쌤') + ' 선생님' };
       } else if (CC.me && CC.me.teacher) {
         teacher = { x: CC.TEACHER.x, y: CC.TEACHER.y, h: 160, v: CC.me.v, name: CC.me.name + ' 선생님' };
       } else {
         teacher = {
           x: CC.TEACHER.x, y: CC.TEACHER.y, h: 160,
-          v: { sp: 1 }, name: (CC.settings.teacherName || '김하늘') + ' 선생님'
+          v: { sp: 1 }, name: (CC.settings.teacherName || '하니쌤') + ' 선생님'
         };
       }
     }

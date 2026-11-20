@@ -2,7 +2,7 @@
    scene.js — AI 말랑 컴퓨터 교실 v3 (세미 픽셀 교실)
    한 자리 뒤→앞 순서:
      ① 진한 초록 의자  ② 우리 쪽을 보는 학생 앞모습  ③ 책상 + 슬림 LED 모니터 뒷면
-   좌석 번호는 화면 아래(앞)가 1~8번, 위(교탁 앞)가 33~36번.
+   좌석 번호는 화면 아래(앞)가 1~9번, 위(교탁 앞)가 37~42번.
    ══════════════════════════════════════════════════════════════ */
 (function () {
   'use strict';
@@ -473,7 +473,7 @@
     const bob = Math.sin(now / 900) * 1.5;
     CC.art.shadow(ctx, t.x, t.y + 2, 54, 15, 0.24);
     CC.art.draw(ctx, 'teacher', t.x, t.y + bob, { h: t.h || 160 });
-    S.drawName(ctx, t.x, t.y - (t.h || 160) - 13, t.name || '김하늘 선생님',
+    S.drawName(ctx, t.x, t.y - (t.h || 160) - 13, t.name || ((CC.settings && CC.settings.teacherName) ? CC.settings.teacherName + ' 선생님' : '하니쌤 선생님'),
       { bg: '#FFF0B8', size: 14 });
   }
 

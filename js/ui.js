@@ -337,8 +337,8 @@
           <button class="btn btn-sm btn-gray" id="etc-reset">명단 기본값</button>
         </div>
         <div class="hint-box" style="margin-top:9px">
-          <b>36석 + 선생님 1명.</b> 명단을 올리면 번호(1~36) 자리에 자동으로 앉아요.
-          36명을 넘는 학생은 통로에 서서 입장해요.
+          <b>42석 + 선생님 1명.</b> 명단을 올리면 번호(1~42) 자리에 자동으로 앉아요.
+          42명을 넘는 학생은 통로에 서서 입장해요.
         </div>
       </div>`;
 
@@ -491,7 +491,7 @@
           if (CC.app.refreshLoginSelect) CC.app.refreshLoginSelect();
           if (CC.app.onRosterChange) CC.app.onRosterChange();
           CC.sfx.pop();
-          UI.toast('기본 명단(5개 반 · 각 36명)으로 되돌렸어요');
+          UI.toast('기본 명단(5개 반 · 각 42명)으로 되돌렸어요');
         };
       }
     });

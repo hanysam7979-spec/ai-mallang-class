@@ -1,7 +1,7 @@
 /* ══════════════════════════════════════════════════════════════
    config.js — v3 세계 좌표 · 좌석 배치(뒤집기) · 기본 명단 · 저장소
    · 화면(논리) 1400×1050 = AI 세미 픽셀 배경(bg_classroom.png)과 같은 비율
-   · 좌석: 화면 맨 앞(아래)이 1~8번, 맨 안쪽(위)이 33~36번 4석
+   · 좌석: 화면 맨 앞(아래)이 1~9번, 맨 안쪽(위)이 37~42번 6석 (모두 42석)
    ══════════════════════════════════════════════════════════════ */
 (function () {
   'use strict';
@@ -51,13 +51,15 @@
     dim: '#8A7D9E'
   };
 
-  /* ── 좌석 (뒤에서부터 그리지만, 번호는 앞줄이 1~8) ───────── */
+  /* ── 좌석 (뒤에서부터 그리지만, 번호는 앞줄이 1~9) ─────────
+     42석: 안쪽 6석 + 9석 × 4줄. 한 줄에 9개가 들어가도록 배율(s)과
+     간격(gap)을 화면 폭 1400 안에 맞춰 두었습니다(좌우 잘림·책상 겹침 없음). */
   const ROW_DEF = [
-    { from: 33, to: 36, y: 588, s: 0.80, gap: 152 },   // 맨 안쪽(교탁 앞) 4석
-    { from: 25, to: 32, y: 696, s: 0.86, gap: 160 },
-    { from: 17, to: 24, y: 804, s: 0.92, gap: 166 },
-    { from: 9,  to: 16, y: 912, s: 0.98, gap: 172 },
-    { from: 1,  to: 8,  y: 1000, s: 1.04, gap: 178 }   // 맨 앞(화면 아래 · 우리 쪽)
+    { from: 37, to: 42, y: 588, s: 0.78, gap: 145 },   // 맨 안쪽(교탁 앞) 6석
+    { from: 28, to: 36, y: 696, s: 0.84, gap: 150 },
+    { from: 19, to: 27, y: 804, s: 0.90, gap: 154 },
+    { from: 10, to: 18, y: 912, s: 0.92, gap: 156 },
+    { from: 1,  to: 9,  y: 1000, s: 0.93, gap: 156 }   // 맨 앞(화면 아래 · 우리 쪽)
   ];
   CC.ROW_DEF = ROW_DEF;
   CC.SEATS = [];
@@ -78,22 +80,41 @@
     return null;
   };
   CC.ROW_Y = ROW_DEF.map(r => r.y);
-  CC.MAX_SEAT = 36;
+  CC.MAX_SEAT = 42;
 
-  /* ── 기본 명단: 5개 반 × 36명 (모든 반 같은 데모 이름, 7번 = 박성희) ── */
+  /* ── 기본 명단: 5개 반 × 42명 (모든 반 같은 데모 이름, 7번 = 박성희) ── */
   CC.CLASS_NAMES = ['꾸러기', '컴박사A', '컴박사B', '컴스타', '토요박사'];
   CC.DEMO_NAMES = [
     '김민준', '이서연', '박도윤', '최지우', '정하준', '강수아', '박성희', '임하은',
     '한예준', '오지호', '서지우', '신유준', '권민서', '황도현', '안서윤', '송지안',
     '전하린', '홍시우', '문하준', '조예린', '배서준', '백하윤', '남주원', '심서윤',
     '엄세준', '김소연', '노하연', '구본우', '진소민', '백서준', '정다은', '차지민',
-    '고유찬', '김예은', '양도현', '홍지아'
+    '고유찬', '김예은', '양도현', '홍지아',
+    '윤가온', '장서우', '최하율', '류민재', '강다인', '윤시온'   /* 37~42번 */
   ];
-  /* 데모에서 결석인 번호 (8명 → 출석 28명 / 전체 36명) */
+  /* 데모에서 결석인 번호 (8명 → 출석 34명 / 전체 42명) */
   CC.DEMO_ABSENT = [4, 8, 13, 17, 22, 28, 32, 35];
 
+  /* ── 예전 기본값 (자동 갱신 판별용) ────────────────────── */
+  const LEGACY_TEACHER_NAME = '김하늘';
+  const LEGACY_DEMO_NAMES = [
+    '김민준', '이서연', '박도윤', '최지우', '정하준', '강수아', '박성희', '임하은',
+    '한예준', '오지호', '서지우', '신유준', '권민서', '황도현', '안서윤', '송지안',
+    '전하린', '홍시우', '문하준', '조예린', '배서준', '백하윤', '남주원', '심서윤',
+    '엄세준', '김소연', '노하연', '구본우', '진소민', '백서준', '정다은', '차지민',
+    '고유찬', '김예은', '양도현', '홍지아'
+  ];
+  CC.LEGACY_TEACHER_NAME = LEGACY_TEACHER_NAME;
+  CC.LEGACY_DEMO_NAMES = LEGACY_DEMO_NAMES;
+
+  /* 번호 1부터 이름이 그대로 이어지는 명단인지 */
+  function sameList(students, names) {
+    if (!Array.isArray(students) || students.length !== names.length) return false;
+    return students.every((s, i) => s && s.num === i + 1 && s.name === names[i]);
+  }
+
   CC.makeDefaultRoster = function () {
-    const teacher = (CC.defaultSettings && CC.defaultSettings().teacherName) || '김하늘';
+    const teacher = (CC.defaultSettings && CC.defaultSettings().teacherName) || '하니쌤';
     const classes = {};
     CC.CLASS_NAMES.forEach(name => {
       classes[name] = {
@@ -110,15 +131,31 @@
     const keys = Object.keys(r.classes);
     if (keys.length !== 1 || keys[0] !== '파이썬1반') return false;
     const cls = r.classes['파이썬1반'];
-    if (!cls || !Array.isArray(cls.students) || cls.students.length !== CC.DEMO_NAMES.length) return false;
-    return cls.students.every((s, i) => s && s.num === i + 1 && s.name === CC.DEMO_NAMES[i]);
+    if (!cls) return false;
+    return sameList(cls.students, LEGACY_DEMO_NAMES) || sameList(cls.students, CC.DEMO_NAMES);
+  };
+
+  /* 예전 기본 명단(5개 반 × 36명 데모 이름, 선생님 ‘김하늘’)이 그대로 남아 있는지
+     → 새 기본 명단(5개 반 × 42명, ‘하니쌤’)으로 자동 갱신하기 위한 판별.
+     반 이름·이름·선생님 이름 중 하나라도 손댔으면 사용자 명단으로 보고 건드리지 않습니다. */
+  CC.isLegacyDemoRoster = function (r) {
+    if (!r || !r.classes) return false;
+    const keys = Object.keys(r.classes);
+    if (!keys.length) return false;
+    return keys.every(id => {
+      if (CC.CLASS_NAMES.indexOf(id) < 0) return false;   /* 사용자가 만든 반이 있으면 제외 */
+      const cls = r.classes[id];
+      if (!cls || !sameList(cls.students, LEGACY_DEMO_NAMES)) return false;
+      if (cls.teacher && cls.teacher !== LEGACY_TEACHER_NAME) return false;
+      return true;
+    });
   };
 
   /* 데모 명단을 그대로 쓰는 반인지 (가상 결석생 연출 여부 판단) */
   CC.isDemoClass = function (classId) {
     const cls = CC.roster && CC.roster.classes && CC.roster.classes[classId];
-    if (!cls || !Array.isArray(cls.students) || cls.students.length !== CC.DEMO_NAMES.length) return false;
-    return cls.students.every((s, i) => s && s.num === i + 1 && s.name === CC.DEMO_NAMES[i]);
+    if (!cls) return false;
+    return sameList(cls.students, CC.DEMO_NAMES);
   };
 
   /* ── 저장소 ────────────────────────────────────────────── */
@@ -159,7 +196,7 @@
      ══════════════════════════════════════════════════════════ */
   CC.defaultSettings = function () {
     return {
-      teacherName: '김하늘',             /* ← 선생님 이름 기본값 */
+      teacherName: '하니쌤',             /* ← 선생님 이름 기본값 */
       teacherPw: '1234',                 /* ← 교사 비밀번호 기본값 */
       supabaseUrl: 'https://sspmekdqtlzuezebnygc.supabase.co',  /* ← SUPABASE_URL */
       supabaseKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNzcG1la2RxdGx6dWV6ZWJueWdjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTUxMTYyMjcsImV4cCI6MjExMDY5MjIyN30.SQQbR3n7-W2GDAt11eW54SmYzbDVyEkHzWB24xerezg',  /* ← SUPABASE_ANON_KEY */
@@ -167,6 +204,16 @@
       notice: ''
     };
   };
+  /* 저장된 설정이 예전 기본값(‘김하늘’)을 그대로 물고 있으면 새 기본값(‘하니쌤’)으로
+     옮깁니다. 사용자가 직접 다른 이름으로 바꿔 둔 설정은 그대로 둡니다. */
+  (function migrateSettings() {
+    const saved = CC.store.get(K.settings, null);
+    if (!saved || typeof saved !== 'object') return;
+    if (saved.teacherName === LEGACY_TEACHER_NAME) {
+      saved.teacherName = CC.defaultSettings().teacherName;
+      CC.store.set(K.settings, saved);
+    }
+  })();
   CC.settings = Object.assign(CC.defaultSettings(), CC.store.get(K.settings, {}));
   CC.saveSettings = function (patch) {
     Object.assign(CC.settings, patch || {});
@@ -197,9 +244,12 @@
   if (!CC.roster || !CC.roster.classes || !Object.keys(CC.roster.classes).length) {
     CC.roster = CC.makeDefaultRoster();
     CC.store.set(K.roster, CC.roster);
-  } else if (CC.isLegacyDefaultRoster(CC.roster)) {
-    /* 예전 ‘파이썬1반’ 한 반짜리 기본값이 저장돼 있으면 새 5개 반 명단으로 갱신 */
+  } else if (CC.isLegacyDefaultRoster(CC.roster) || CC.isLegacyDemoRoster(CC.roster)) {
+    /* 예전 기본 명단(‘파이썬1반’ 한 반 / 5개 반 × 36명)이 저장돼 있으면
+       새 기본 명단(5개 반 × 42명 · 하니쌤)으로 갱신. 보던 반은 그대로 이어 갑니다. */
+    const watching = CC.roster.classes && CC.roster.activeClass;
     CC.roster = CC.makeDefaultRoster();
+    if (watching && CC.roster.classes[watching]) CC.roster.activeClass = watching;
     CC.store.set(K.roster, CC.roster);
   }
   CC.saveRoster = function (r) {

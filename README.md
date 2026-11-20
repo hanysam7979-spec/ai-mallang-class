@@ -57,12 +57,12 @@ python3 -m http.server 8000
 
 ### 2) 선생님 이름 · 비밀번호
 
-- `js/config.js` 의 `teacherName`(기본 `김하늘`), `teacherPw`(기본 `1234`)
+- `js/config.js` 의 `teacherName`(기본 `하니쌤`), `teacherPw`(기본 `1234`)
 - 앱 안에서 바꾸려면 [교사 설정] → **비밀번호** 탭
 
 ### 3) 학생 명단 (반 · 번호 · 이름)
 
-- 기본 데모 명단: `js/config.js` 의 `CC.DEMO_NAMES`(36명) · `CC.makeDefaultRoster()`
+- 기본 데모 명단: `js/config.js` 의 `CC.DEMO_NAMES`(42명) · `CC.makeDefaultRoster()`
 - 실제 학급은 [교사 설정] → **명단(엑셀 업로드)** 에서 `.xlsx` / `.xls` / `.csv` 업로드
   (첫 줄: `반, 번호, 이름` — 모달의 **명단 양식 내려받기**로 서식 확인)
 - 업로드한 명단·설정은 각 브라우저의 `localStorage`(`cc.roster.v3`, `cc.settings.v3`)에 저장됩니다.
