@@ -144,8 +144,8 @@
     return {
       teacherName: '김하늘',             /* ← 선생님 이름 기본값 */
       teacherPw: '1234',                 /* ← 교사 비밀번호 기본값 */
-      supabaseUrl: '',                   /* ← SUPABASE_URL  (예: https://xxxx.supabase.co) */
-      supabaseKey: '',                   /* ← SUPABASE_ANON_KEY */
+      supabaseUrl: 'https://sspmekdqtlzuezebnygc.supabase.co',  /* ← SUPABASE_URL */
+      supabaseKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNzcG1la2RxdGx6dWV6ZWJueWdjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTUxMTYyMjcsImV4cCI6MjExMDY5MjIyN30.SQQbR3n7-W2GDAt11eW54SmYzbDVyEkHzWB24xerezg',  /* ← SUPABASE_ANON_KEY */
       sound: true,
       notice: ''
     };
