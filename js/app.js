@@ -705,19 +705,29 @@
   }
 
   /* ── 전역 오류 표시 ───────────────────────────────────── */
+  /* 외부 CDN 스크립트(교차 출처)의 오류는 내용이 'Script error.'로만 보입니다.
+     탭이 백그라운드로 갈 때 실시간 소켓이 잠시 끊기며 나는 오류처럼,
+     학생 화면에 보여 줄 필요가 없는 것은 기록만 하고 표시하지 않습니다. */
+  function isOpaque(errText) {
+    const t = String(errText || '').trim();
+    return t === 'Script error.' || t === 'Script error' || t === 'null' || t === 'undefined';
+  }
   window.addEventListener('error', (e) => {
+    (window.__ccErrors = window.__ccErrors || []).push(String(e.message));
+    if (isOpaque(e.message) || !e.filename) return;
     const bar = document.getElementById('errbar');
     if (!bar) return;
     bar.hidden = false;
     bar.textContent = '⚠ ' + (e.message || 'error') + ' @' + (e.filename || '').split('/').pop() + ':' + (e.lineno || 0);
-    (window.__ccErrors = window.__ccErrors || []).push(String(e.message));
   });
   window.addEventListener('unhandledrejection', (e) => {
+    const msg = e.reason && e.reason.message ? e.reason.message : e.reason;
+    (window.__ccErrors = window.__ccErrors || []).push(String(msg));
+    if (isOpaque(msg)) return;
     const bar = document.getElementById('errbar');
     if (!bar) return;
     bar.hidden = false;
-    bar.textContent = '⚠ ' + (e.reason && e.reason.message ? e.reason.message : e.reason);
-    (window.__ccErrors = window.__ccErrors || []).push(String(e.reason));
+    bar.textContent = '⚠ ' + msg;
   });
 
   /* ══════════════════════════════════════════════════════════
