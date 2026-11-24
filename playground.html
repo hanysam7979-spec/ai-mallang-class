@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>🎮 틈새 놀이터 — AI 말랑 컴퓨터 교실</title>
+<meta name="description" content="AI 말랑 컴퓨터 교실 수업 후 5~10분 자유시간용 틈새 놀이터. 수업 마무리 타이머, 초성 퀴즈, 타자 놀이, 미로 찾기, 틀린 그림 찾기, 숨은 그림 찾기, 최고 기록 랭킹.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%23FFF0F6'/><text x='50' y='72' font-size='58' text-anchor='middle'>🎮</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;800;900&display=swap">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/galmuri/dist/galmuri.css">
+<link rel="stylesheet" href="css/playground.css">
+</head>
+<body>
+
+<div class="pg-app">
+  <!-- ══ 상단 바 : 브랜드 · 마무리 타이머 · 내 정보 ══ -->
+  <header class="pg-top">
+    <a class="pg-brand" href="index.html" title="AI 말랑 컴퓨터 교실로 돌아가기">
+      <span class="pg-logo" aria-hidden="true">🎮</span>
+      <span class="pg-brand-tx"><b>틈새 놀이터</b><i>AI 말랑 컴퓨터 교실</i></span>
+    </a>
+
+    <div class="pg-timer" id="timer" role="group" aria-label="수업 마무리 타이머">
+      <div class="t-seg" role="group" aria-label="타이머 시간 고르기">
+        <button class="t-pick is-on" data-min="5" type="button">5분</button>
+        <button class="t-pick" data-min="10" type="button">10분</button>
+      </div>
+      <div class="t-clock" id="t-clock" aria-live="polite">05:00</div>
+      <button class="t-btn t-start" id="t-start" type="button">시작</button>
+      <button class="t-btn t-reset" id="t-reset" type="button" title="타이머 초기화" aria-label="초기화">↺</button>
+      <button class="t-btn t-sound" id="t-sound" type="button" title="소리 켜기 / 끄기" aria-label="소리">🔊</button>
+    </div>
+
+    <div class="pg-top-right">
+      <button class="who-pill" id="who-pill" type="button" title="내 정보 바꾸기">
+        <span class="who-dot" aria-hidden="true"></span>
+        <span class="who-tx"><b id="who-name">게스트</b><i id="who-cls">꾸러기</i></span>
+        <span class="who-edit" aria-hidden="true">✎</span>
+      </button>
+      <a class="back-btn" href="index.html">← 교실로</a>
+    </div>
+  </header>
+
+  <main class="pg-main" id="pg-main">
+
+    <!-- ══ 허브 ══ -->
+    <section class="view" id="view-hub">
+      <div class="hub-wrap">
+        <div class="hub-left">
+          <div class="hub-hero">
+            <div>
+              <h2>수업 끝나고 <span>5분</span>, 신나게 놀고 <span>자리 정리</span>!</h2>
+              <p id="hub-hello">오늘은 어떤 놀이를 해 볼까요?</p>
+            </div>
+            <div class="hero-btns">
+              <button class="mini-chip" id="hub-timer5" type="button">⏱ 5분 타이머</button>
+              <button class="mini-chip" id="hub-timer10" type="button">⏱ 10분 타이머</button>
+            </div>
+          </div>
+          <div class="hub-grid" id="hub-grid"></div>
+          <div class="hub-steps">
+            <span class="hs-title">수업 끝나면 이렇게!</span>
+            <span class="hs-item"><b>1</b> 놀이 멈추기</span>
+            <span class="hs-item"><b>2</b> 책상 정리</span>
+            <span class="hs-item"><b>3</b> 가방 챙기기</span>
+            <span class="hs-item"><b>4</b> 인사하고 나가기</span>
+          </div>
+          <p class="hub-foot">
+            놀이를 마치면 <b>↺ 타이머</b>로 시간을 재고, 시간이 끝나면 알려 드려요.
+            기록은 이 컴퓨터에 저장되고, 선생님이 Supabase 표를 만들면 반 친구들과 함께 볼 수 있어요.
+          </p>
+        </div>
+
+        <aside class="hub-right">
+          <section class="rank-card" id="rank-card"></section>
+          <div class="tip-card">
+            <b>💡 선생님 팁</b>
+            <p>수업 마무리 5분 전에 위쪽 <b>5분 타이머</b>를 눌러 두면, 시간이 끝날 때 부드러운 종소리와
+              배너로 “자리 정리”를 알려 줘요. 소리는 🔊 버튼으로 끌 수 있어요.</p>
+          </div>
+        </aside>
+      </div>
+    </section>
+
+    <!-- ══ 게임 화면 (스크립트가 채웁니다) ══ -->
+    <section class="view game-view" id="view-chosung" hidden></section>
+    <section class="view game-view" id="view-typing" hidden></section>
+    <section class="view game-view" id="view-maze" hidden></section>
+    <section class="view game-view" id="view-spot" hidden></section>
+    <section class="view game-view" id="view-hidden" hidden></section>
+  </main>
+</div>
+
+<!-- 시간 종료 알림 배너 -->
+<div class="timeup" id="timeup" hidden>
+  <div class="timeup-card">
+    <span class="timeup-ico" aria-hidden="true">🔔</span>
+    <div class="timeup-tx">
+      <b>틈새 놀이 시간이 끝났어요!</b>
+      <i>자리 정리해요~ 책상 위도 깔끔하게!</i>
+    </div>
+    <div class="timeup-actions">
+      <button class="tu-more" id="tu-more" type="button">5분 더</button>
+      <button id="tu-close" type="button">확인</button>
+    </div>
+  </div>
+</div>
+
+<div class="pg-toast" id="pg-toast" hidden></div>
+<div class="pg-modals" id="pg-modals" hidden></div>
+
+<script src="js/playground/core.js"></script>
+<script src="js/playground/scenes.js"></script>
+<script src="js/playground/game-chosung.js"></script>
+<script src="js/playground/game-typing.js"></script>
+<script src="js/playground/game-maze.js"></script>
+<script src="js/playground/game-spot.js"></script>
+<script src="js/playground/game-hidden.js"></script>
+<script src="js/playground/main.js"></script>
+</body>
+</html>

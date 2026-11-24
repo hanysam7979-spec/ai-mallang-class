@@ -252,6 +252,18 @@ i{font-style:normal}
 .pl-txt i{font-size:10px;color:var(--inkSoft)}
 .pl-go{font-size:16px;color:#CBBFD8}
 
+/* 틈새 놀이터 진입 (상단 pill + 사이드 카드) */
+a.pill-play,a.panel-play{text-decoration:none;color:inherit;box-sizing:border-box}
+.pill-play{
+  background:linear-gradient(160deg,#FFF0F6,#FFD9E8);color:#B8377A;
+  padding:0 14px;
+}
+.pill-play .pill-ico{font-size:15px}
+.pill-play:hover{box-shadow:0 8px 18px rgba(232,106,140,.24)}
+.panel-play{background:linear-gradient(160deg,#FFF7FB,#FFEFF6);border-color:#FFE3EF}
+.panel-play .pl-ico{background:linear-gradient(160deg,#FFE3EF,#FFC9DE);color:#C24676}
+.panel-play .pl-txt b{color:#B8377A}
+
 .panel-status{background:linear-gradient(160deg,#F3FBF6,#E9F7FF);border:1.5px solid #E4F3EC}
 .status-row{display:flex;align-items:center;gap:7px}
 .status-row b{font-size:11.5px;font-weight:800;color:#3E7A63}
@@ -733,6 +745,7 @@ i{font-style:normal}
   .app{grid-template-columns:minmax(0,1fr) 290px}
   .brand-text p{display:none}
   .sb-hint{display:none}
+  .pill-play-tx{display:none}
   .roster-grid{grid-template-columns:repeat(5,minmax(0,1fr))}
 }
 @media (max-width:960px){
