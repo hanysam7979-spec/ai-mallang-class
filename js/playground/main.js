@@ -91,7 +91,7 @@
     /* 처음 온 학생에게 이름 묻기 (한 번만) */
     if (PG.who.isGuest && !PG.store.get('cc.playground.asked.v1', false)) {
       PG.store.set('cc.playground.asked.v1', true);
-      setTimeout(() => PG.openWho(), 500);
+      setTimeout(() => PG.openWho(true), 500);
     }
 
     PG.timer.setMin(5);

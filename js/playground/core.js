@@ -207,7 +207,7 @@
   };
 
   /* ── 내 정보 바꾸기 ─────────────────────────────────────── */
-  PG.openWho = function () {
+  PG.openWho = function (firstVisit) {
     const cc = PG.classroom();
     const classes = cc.classes.length ? cc.classes : [{ id: '꾸러기', names: [] }];
     const cur = PG.who.cls;
@@ -227,9 +227,10 @@
         <input id="mw-name" type="text" maxlength="12" list="mw-names" placeholder="이름을 입력하세요" value="${PG.esc(PG.who.isGuest ? '' : PG.who.name)}">
         <datalist id="mw-names">${listOpts}</datalist>
       </label>
-      <p class="modal-note">교실에 입장한 이름이 있으면 자동으로 채워 둘게요.</p>
+      <p class="modal-note">교실에 입장한 이름이 있으면 자동으로 채워 둘게요.
+        이름을 넣지 않아도 놀이는 그대로 즐길 수 있어요.</p>
       <div class="modal-actions">
-        <button class="btn btn-sm" data-close>취소</button>
+        <button class="btn btn-sm" data-close>${firstVisit ? '그냥 놀기' : '취소'}</button>
         <button class="btn btn-sm btn-primary" id="mw-ok">저장</button>
       </div>
     `, (card, close) => {
