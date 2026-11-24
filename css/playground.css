@@ -268,7 +268,7 @@ h2,h3,p{margin:0}
   background:linear-gradient(160deg,#FFF9EC,#FFF3DC);border:1.5px solid #FFF0D8;
   box-shadow:var(--sh-sm);
 }
-.tip-card b{display:block;font-size:12px;color:#A08249;margin-bottom:3px}
+.tip-card > b{display:block;font-size:12px;color:#A08249;margin-bottom:3px}
 .tip-card p{font-size:11px;color:#B29A6E;font-weight:600;line-height:1.55}
 
 /* ══ 게임 공통 ════════════════════════════════════════════ */

@@ -47,7 +47,8 @@
 
   const KEYS = PG.KEYS = {
     who: 'cc.playground.who.v1',
-    sound: 'cc.playground.sound.v1',
+    // v2: 기본값이 '음소거'로 바뀌어, 예전(v1)에 저장된 '켜짐' 값은 무시하고 새 기본값부터 시작합니다.
+    sound: 'cc.playground.sound.v2',
     scores: 'cc.playground.scores.v1',
     shared: 'cc.playground.shared.v1',
     ccLast: 'cc.last.v3',
@@ -107,10 +108,13 @@
     }
   };
 
-  /* ── 효과음 (WebAudio · 부드러운 종소리) ───────────────── */
+  /* ── 효과음 (WebAudio · 부드러운 종소리) ───────────────────
+     기본은 음소거(false). 교실에서 40대가 한꺼번에 울리지 않도록 하고,
+     필요하면 상단 🔊/🔇 버튼으로 켜고 끌 수 있습니다(이 컴퓨터에 저장).
+     ──────────────────────────────────────────────────────── */
   PG.sfx = {
     ctx: null,
-    on: PG.store.get(KEYS.sound, true) !== false,
+    on: PG.store.get(KEYS.sound, false) === true,
     ensure() {
       if (this.ctx) return this.ctx;
       try {
