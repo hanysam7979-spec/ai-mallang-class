@@ -142,6 +142,7 @@
 
     APP.onRosterChange();
     updateLoginNote();
+    if (CC.me && CC.ui.renderMe) CC.ui.renderMe();
     return !same;
   }
   APP.applyRoster = applyRoster;
