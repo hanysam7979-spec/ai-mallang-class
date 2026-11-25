@@ -168,7 +168,7 @@
         <input id="in-name" type="text" placeholder="이름을 입력하세요" maxlength="12" autocomplete="off">
       </label>
       <button class="btn btn-primary btn-big" type="submit">입장하기 →</button>
-      <p class="login-note">명단에 있는 이름이면 <b>1~42번</b> 중 내 번호가 자동으로 정해져요.<br>데모용 <b>5개 반</b>(꾸러기·컴박사A·컴박사B·컴스타·토요박사) 42명 명단이 미리 들어 있어요.</p>
+      <p class="login-note" id="login-note">명단에 있는 이름이면 <b>1~42번</b> 중 내 번호가 자동으로 정해져요.</p>
       <p class="login-err" id="login-err" hidden></p>
     </form>
 
@@ -190,6 +190,7 @@
       <span class="dot" id="login-dot"></span>
       <span id="login-status">로컬 데모 모드로 바로 시작할 수 있어요</span>
     </div>
+    <p class="login-src" id="login-roster">명단을 서버에서 불러오는 중…</p>
   </div>
 </div>
 

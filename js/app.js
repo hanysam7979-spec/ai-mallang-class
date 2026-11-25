@@ -44,6 +44,11 @@
     CC.ui.updateConn();
     CC.ui.updateCounts(0, CC.classTotal());
 
+    /* 서버(Supabase)에 저장된 명단을 불러옵니다 — 모든 학생 PC가 같은 명단을 보도록.
+       불러오는 동안에도 기본(저장된) 명단으로 화면을 먼저 보여 줍니다. */
+    APP.loadRosterFromDB();
+    updateLoginNote();
+
     const last = CC.store.get(CC.KEYS.last, null);
     if (last) {
       const nameIn = document.getElementById('in-name');
@@ -95,6 +100,67 @@
   };
 
   /* ══════════════════════════════════════════════════════════
+     명단 불러오기 · 적용 (Supabase 에 저장된 명단)
+     ══════════════════════════════════════════════════════════ */
+  APP.rosterState = { loaded: false, source: 'local', error: '' };
+
+  APP.loadRosterFromDB = function () {
+    APP.rosterState = { loaded: false, source: 'loading', error: '' };
+    CC.ui.renderRosterStatus();
+    const p = CC.rosterDB.load().then(res => {
+      if (!res || !res.ok) {
+        APP.rosterState = { loaded: true, source: 'local', error: CC.rosterDB.message(res) };
+      } else if (!res.roster) {
+        /* 서버에 아직 저장된 명단이 없음 → 이 PC의(기본) 명단을 그대로 사용 */
+        APP.rosterState = { loaded: true, source: 'empty', error: '' };
+      } else {
+        APP.rosterState = { loaded: true, source: 'server', error: '', updatedAt: res.updatedAt };
+        try { applyRoster(res.roster); } catch (e) { console.warn('[roster] apply', e); }
+      }
+      CC.ui.renderRosterStatus();
+      return APP.rosterState;
+    });
+    state.rosterReady = p;
+    return p;
+  };
+
+  /* 명단을 화면(반 선택 · 좌석 · 전광판)에 반영 */
+  function applyRoster(r) {
+    const norm = CC.normalizeRoster(r);
+    if (!norm) return false;
+    const same = JSON.stringify(norm) === JSON.stringify(CC.roster);
+    const watching = CC.roster && CC.roster.activeClass;
+    CC.roster = norm;
+    /* 보던 반(또는 학생이 고른 반)이 그대로 있으면 유지 */
+    if (watching && CC.roster.classes[watching]) CC.roster.activeClass = watching;
+    CC.store.set(CC.KEYS.roster, CC.roster);
+
+    const sel = document.getElementById('in-class');
+    const keep = sel ? sel.value : '';
+    fillClassSelect();
+    if (sel && keep && CC.roster.classes[keep]) sel.value = keep;
+
+    APP.onRosterChange();
+    updateLoginNote();
+    return !same;
+  }
+  APP.applyRoster = applyRoster;
+
+  /* 로그인 화면 안내 문구를 실제 명단에 맞게 */
+  function updateLoginNote() {
+    const el = document.getElementById('login-note');
+    if (!el) return;
+    const ids = Object.keys(CC.roster.classes);
+    if (!ids.length) return;
+    const total = ids.reduce((a, c) => a + CC.classList(c).length, 0);
+    const allDemo = ids.every(id => CC.isDemoClass(id));
+    el.innerHTML = allDemo
+      ? '명단에 있는 이름이면 <b>1~42번</b> 중 내 번호가 자동으로 정해져요.<br>지금은 <b>데모 명단</b>(' + CC.esc(ids.join('·')) + ')이 들어 있어요. 선생님이 실제 명단을 올리면 모든 PC에 그대로 적용돼요.'
+      : '명단에 있는 이름이면 <b>1~42번</b> 중 내 번호가 자동으로 정해져요.<br>등록된 반: <b>' + CC.esc(ids.join('·')) + '</b> · 모두 <b>' + total + '명</b>. 명단에 없는 이름은 입장할 수 없어요.';
+  }
+  APP.refreshLoginNote = updateLoginNote;
+
+  /* ══════════════════════════════════════════════════════════
      로그인
      ══════════════════════════════════════════════════════════ */
   function fillClassSelect() {
@@ -131,13 +197,12 @@
     tabS.onclick = () => mode('student');
     tabT.onclick = () => mode('teacher');
 
-    formS.addEventListener('submit', (e) => {
+    formS.addEventListener('submit', async (e) => {
       e.preventDefault();
       const clsSel = document.getElementById('in-class');
       const nameIn = document.getElementById('in-name');
       const err = document.getElementById('login-err');
       const name = (nameIn.value || '').trim();
-      const classId = clsSel.value;
       if (!name) {
         err.hidden = false;
         err.innerHTML = '이름을 입력해 주세요.';
@@ -145,6 +210,14 @@
         nameIn.focus();
         return;
       }
+      /* 서버 명단을 아직 받지 못했으면 먼저 기다립니다 (최대 8초) */
+      if (!APP.rosterState.loaded && state.rosterReady) {
+        err.hidden = false;
+        err.innerHTML = '명단을 확인하는 중이에요…';
+        await state.rosterReady;
+        err.hidden = true;
+      }
+      const classId = clsSel.value;
       CC.roster.activeClass = classId;
       CC.saveRoster();
       CC.player.refreshBoxes();
@@ -154,11 +227,8 @@
       if (!num) {
         err.hidden = false;
         err.innerHTML = `명단에 <b>${CC.esc(name)}</b> 이(가) 없어요.<br>
-          이름을 다시 확인하거나, 선생님께 명단 등록을 부탁해 주세요.<br>
-          <button class="btn btn-sm btn-yellow" id="guest-btn" style="margin-top:6px">체험으로 입장하기</button>`;
+          이름을 다시 확인하거나, 선생님께 명단 등록을 부탁해 주세요.`;
         CC.sfx.err();
-        const gb = document.getElementById('guest-btn');
-        if (gb) gb.onclick = () => enterAsGuest(name, classId);
         return;
       }
       err.hidden = true;
@@ -181,21 +251,7 @@
     });
   }
 
-  function freeNum(classId) {
-    const list = CC.classList(classId);
-    const used = new Set(list.map(s => s.num));
-    for (let i = 1; i <= CC.MAX_SEAT; i++) if (!used.has(i)) return i;
-    return CC.randInt(1, CC.MAX_SEAT);
-  }
-
-  function enterAsGuest(name, classId) {
-    const num = freeNum(classId);
-    CC.sfx.pop();
-    CC.ui.toast('체험 모드로 입장했어요 · ' + num + '번 자리');
-    enterStudent(classId, num, name, true);
-  }
-
-  function enterStudent(classId, num, name, guest) {
+  function enterStudent(classId, num, name) {
     CC.store.set(CC.KEYS.last, { name, classId });
     const seat = CC.seat(num);
     const me = CC.player.make({
@@ -203,7 +259,6 @@
       x: CC.DOOR.x, y: CC.DOOR.y + 60, seated: false
     });
     me.isMe = true;
-    me.guest = !!guest;
     state.mePlayer = me;
     state.players.set(me.id, me);
     CC.me = {
@@ -269,14 +324,17 @@
     CC.scene.build(occupiedSet(), CC.me ? CC.me.num : 0);
 
     const list = CC.classList(CC.roster.activeClass);
-    const absent = (CC.isDemoClass(CC.roster.activeClass) && list.length >= CC.DEMO_NAMES.length) ? CC.DEMO_ABSENT : [];
+    /* 데모 반에서만 가상 친구(데모 학생)를 채웁니다.
+       선생님이 올린 명단(데모가 아닌 반)은 실제 접속한 친구만 보입니다. */
+    const isDemo = CC.isDemoClass(CC.roster.activeClass);
+    const absent = (isDemo && list.length >= CC.DEMO_NAMES.length) ? CC.DEMO_ABSENT : [];
     CC.rt.stop();
     CC.rt.init({
       classId: CC.roster.activeClass,
       me: CC.me,
       roster: list,
       absent: absent,
-      demo: true
+      demo: isDemo
     });
     wireRealtime();
     CC.ui.updateConn();
@@ -303,19 +361,27 @@
     });
   }
 
+  let rtWired = false;
   function wireRealtime() {
+    if (rtWired) return;          /* 다시 연결해도 핸들러는 한 번만 (중복 처리 방지) */
+    rtWired = true;
     CC.rt.on('status', () => CC.ui.updateConn());
     CC.rt.on('peers', () => CC.ui.updateCounts(APP.presentSet().size, CC.classTotal()));
     CC.rt.on('race', (p) => CC.games.race.handle(p));
     CC.rt.on('notice', (p) => { if (p) APP.setScreen({ mode: 'notice', notice: p.notice }); });
     CC.rt.on('screen', (p) => { if (p) APP.setScreen(p); });
     CC.rt.on('roster', (p) => {
-      if (!p || !p.classes) return;
-      Object.assign(CC.roster.classes, p.classes);
-      if (p.activeClass) CC.roster.activeClass = p.activeClass;
-      CC.saveRoster();
-      fillClassSelect();
-      APP.onRosterChange();
+      if (!p) return;
+      if (p.roster) {
+        /* 선생님이 올린 명단 그대로 교체 (예전 데모 반도 함께 정리) */
+        applyRoster(p.roster);
+      } else if (p.classes) {
+        const merged = CC.normalizeRoster({
+          activeClass: CC.roster.activeClass,
+          classes: Object.assign({}, CC.roster.classes, p.classes)
+        });
+        if (merged) applyRoster(merged);
+      } else return;
       CC.ui.toast('선생님이 새 명단을 올렸어요');
     });
   }
@@ -323,10 +389,12 @@
   APP.reconnect = function () {
     if (!CC.me) return;
     const me = state.mePlayer;
+    const isDemo = CC.isDemoClass(CC.roster.activeClass);
     CC.rt.stop();
     CC.rt.init({
       classId: CC.roster.activeClass, me: CC.me,
-      roster: CC.classList(CC.roster.activeClass), absent: CC.DEMO_ABSENT, demo: true
+      roster: CC.classList(CC.roster.activeClass),
+      absent: isDemo ? CC.DEMO_ABSENT : [], demo: isDemo
     });
     wireRealtime();
     CC.ui.updateConn();

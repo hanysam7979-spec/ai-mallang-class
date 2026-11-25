@@ -122,6 +122,20 @@
       : '로컬 데모 모드로 바로 시작할 수 있어요';
   };
 
+  /* 명단을 서버(Supabase)에서 불러오는 상태 — 로그인 화면 아래 한 줄 */
+  UI.renderRosterStatus = function () {
+    const el = document.getElementById('login-roster');
+    if (!el) return;
+    const s = (CC.app && CC.app.rosterState) || { loaded: false, source: 'loading' };
+    let text;
+    if (!s.loaded) text = '명단을 서버에서 불러오는 중…';
+    else if (s.source === 'server') text = '서버에 저장된 명단을 불러왔어요 · 모든 PC가 같은 명단을 봅니다';
+    else if (s.source === 'empty') text = '서버에 저장된 명단이 아직 없어요 · 지금은 기본 데모 명단으로 시작합니다';
+    else text = '서버 명단을 불러오지 못했어요(' + (s.error || '연결 실패') + ') · 이 PC의 명단으로 시작합니다';
+    el.textContent = text;
+    el.dataset.state = s.loaded ? (s.source || 'local') : 'loading';
+  };
+
   /* ══════════════════════════════════════════════════════════
      출석 명단
      ══════════════════════════════════════════════════════════ */
@@ -290,7 +304,8 @@
         <div id="up-preview" style="margin-top:9px"></div>
         <div class="hint-box" style="margin-top:9px">
           현재 <b>${CC.esc(CC.roster.activeClass)}</b> · <b>${list.length}명</b> 등록됨 — 번호가 곧 <b>지정석</b>이에요.
-          명단에 없는 번호는 빈자리로 표시됩니다.
+          명단에 없는 번호는 빈자리로 표시됩니다.<br>
+          <b>[이 명단으로 등록하기]</b>를 누르면 <b>서버에 저장</b>되어, 새로 접속하는 학생 PC에도 이 명단이 그대로 보입니다.
         </div>
       </div>
 
@@ -345,7 +360,7 @@
     UI.openModal({
       icon: '▤', title: '교사 설정', sub: '명단 업로드 · 비밀번호 · 실시간 연결',
       size: 'md', body: html,
-      foot: `<span class="grow" style="font-size:10px;color:#6B5C88">설정은 이 브라우저에 저장됩니다</span>
+      foot: `<span class="grow" style="font-size:10px;color:#6B5C88">명단은 서버에 저장되어 모든 PC에 적용됩니다</span>
              <button class="btn btn-sm btn-gray" onclick="CC.ui.closeModal()">닫기</button>`,
       onMount(root) {
         const $ = (s) => root.querySelector(s);
@@ -401,6 +416,27 @@
           else reader.readAsArrayBuffer(f);
         }
 
+        function isDemoList(cls) {
+          return !!(cls && Array.isArray(cls.students) &&
+            cls.students.length === CC.DEMO_NAMES.length &&
+            cls.students.every((s, i) => s.num === i + 1 && s.name === CC.DEMO_NAMES[i]));
+        }
+
+        function applyUpload(data) {
+          const incoming = Object.keys(data.classes);
+          const incomingDemo = incoming.every(cn => isDemoList(data.classes[cn]));
+          /* 진짜 명단을 올렸을 때는, 손대지 않은 옛 데모 반(기본 이름 그대로)을 지워
+             학생 화면에 가짜 이름의 반이 남지 않게 합니다. */
+          if (!incomingDemo) {
+            Object.keys(CC.roster.classes).forEach(cn => {
+              if (!data.classes[cn] && isDemoList(CC.roster.classes[cn])) delete CC.roster.classes[cn];
+            });
+          }
+          Object.assign(CC.roster.classes, data.classes);
+          const first = incoming[0];
+          CC.roster.activeClass = first;
+        }
+
         function showPreview(data) {
           const prev = $('#up-preview');
           if (!data.classes || !Object.keys(data.classes).length) {
@@ -419,18 +455,40 @@
             <div class="row-inline" style="margin-top:8px">
               <button class="btn btn-sm btn-mint" id="up-apply">이 명단으로 등록하기</button>
             </div>`;
-          prev.querySelector('#up-apply').onclick = () => {
-            Object.assign(CC.roster.classes, data.classes);
-            const first = Object.keys(data.classes)[0];
-            CC.roster.activeClass = first;
+          prev.querySelector('#up-apply').onclick = async () => {
+            const btn = prev.querySelector('#up-apply');
+            const prevClass = CC.roster.activeClass;
+            applyUpload(data);
+            const first = CC.roster.activeClass;
             CC.saveRoster();
-            CC.rt.send('roster', { classes: data.classes, activeClass: first });
+            CC.rt.send('roster', { roster: CC.roster, classes: data.classes, activeClass: first });
             CC.sfx.cheer();
-            UI.toast('명단을 등록했어요! 이제 이름으로 입장할 수 있어요');
-            $('#up-state').textContent = '등록 완료';
-            $('#up-state').className = 'badge badge-ok';
             if (CC.app.refreshLoginSelect) CC.app.refreshLoginSelect();
             if (CC.app.onRosterChange) CC.app.onRosterChange();
+            if (CC.app.refreshLoginNote) CC.app.refreshLoginNote();
+            if (CC.app.rosterState) CC.app.rosterState = { loaded: true, source: 'server', error: '' };
+            /* 반이 바뀌었으면 교실(실시간 방)도 그 반으로 옮겨야 학생들이 보입니다 */
+            if (CC.me) {
+              if (CC.ui.renderMe) CC.ui.renderMe();
+              if (prevClass !== first && CC.app.reconnect) CC.app.reconnect();
+            }
+
+            /* ① 이 PC 저장 + ② 실시간 방송 → ③ Supabase 서버 저장(모든 PC 공통) */
+            if (btn) { btn.disabled = true; btn.textContent = '서버에 저장하는 중…'; }
+            $('#up-state').textContent = '서버 저장 중…';
+            $('#up-state').className = 'badge badge-warn';
+            const res = await CC.rosterDB.save(CC.roster);
+            if (btn) { btn.disabled = false; btn.textContent = '이 명단으로 등록하기'; }
+            if (res && res.ok) {
+              $('#up-state').textContent = '등록 완료';
+              $('#up-state').className = 'badge badge-ok';
+              UI.toast('명단을 등록했어요! 이제 모든 학생 PC에 이 명단이 보여요', 3200);
+            } else {
+              $('#up-state').textContent = '서버 저장 실패';
+              $('#up-state').className = 'badge badge-warn';
+              UI.toast('이 PC에는 등록했지만 서버 저장에 실패했어요 — ' + CC.rosterDB.message(res), 4200);
+            }
+            UI.renderRosterStatus();
           };
         }
 
@@ -485,13 +543,26 @@
           CC.rt.send('screen', { mode: 'welcome' });
           UI.toast('스크린을 초기화했어요');
         };
-        $('#etc-reset').onclick = () => {
+        $('#etc-reset').onclick = async () => {
           CC.roster = CC.makeDefaultRoster();
           CC.saveRoster();
+          CC.rt.send('roster', { roster: CC.roster, activeClass: CC.roster.activeClass });
           if (CC.app.refreshLoginSelect) CC.app.refreshLoginSelect();
           if (CC.app.onRosterChange) CC.app.onRosterChange();
+          if (CC.app.refreshLoginNote) CC.app.refreshLoginNote();
+          /* 교실 안에 있으면 반 이름·실시간 방도 기본 반으로 맞춥니다 */
+          if (CC.me) {
+            if (CC.ui.renderMe) CC.ui.renderMe();
+            if (CC.app.reconnect) CC.app.reconnect();
+          }
           CC.sfx.pop();
           UI.toast('기본 명단(5개 반 · 각 42명)으로 되돌렸어요');
+          /* 서버에도 같은 기본 명단을 올려 학생 PC와 어긋나지 않게 합니다 */
+          const res = await CC.rosterDB.save(CC.roster);
+          UI.toast(res && res.ok
+            ? '기본 명단을 모든 PC에 적용했어요'
+            : '이 PC만 기본 명단으로 바꿨어요 — 서버 저장 실패: ' + CC.rosterDB.message(res), 4000);
+          UI.renderRosterStatus();
         };
       }
     });
@@ -592,7 +663,7 @@
   UI.helpModal = function () {
     const html = `
       <div class="hint-box" style="margin-bottom:8px"><b>이동</b> 마우스로 바닥 클릭 · <code>WASD</code>/방향키 · 내 책상을 클릭하면 앉아요.</div>
-      <div class="hint-box" style="margin-bottom:8px"><b>입장</b> 반을 고르고 이름을 입력하면 명단의 <b>번호 자리</b>로 안내해요. 명단에 없으면 체험으로 입장할 수 있어요.</div>
+      <div class="hint-box" style="margin-bottom:8px"><b>입장</b> 반을 고르고 이름을 입력하면 명단의 <b>번호 자리</b>로 안내해요. <b>명단에 없는 이름은 입장할 수 없어요</b> — 선생님께 명단 등록을 부탁해요.</div>
       <div class="hint-box" style="margin-bottom:8px"><b>출석 전광판</b> 그 반의 실제 수강인원 기준 <b>출석 N명 / 전체 T명 · 결석 M명</b>으로 표시돼요.</div>
       <div class="hint-box"><b>미니게임</b> ⌨ 타자연습(1~8단계) · ▤ 블록 코딩 미로 · 🌍 지구 타이핑 · 🖱️ 마우스 게임 5종 · ⚡ 타자 대결</div>`;
     UI.openModal({

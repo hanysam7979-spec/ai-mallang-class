@@ -257,6 +257,119 @@
     CC.store.set(K.roster, CC.roster);
   };
 
+  /* ══════════════════════════════════════════════════════════
+     ★ 명단 서버 저장 (Supabase · classroom_rosters 표)
+       · 선생님이 올린 명단을 한 줄(id='main')에 저장해,
+         새로 접속한 학생 PC도 같은 명단을 불러오게 합니다.
+       · anon key 로 SELECT / INSERT / UPDATE(upsert) 만 사용합니다.
+     ══════════════════════════════════════════════════════════ */
+  CC.ROSTER_TABLE = 'classroom_rosters';
+  CC.ROSTER_ROW_ID = 'main';
+
+  /* 어떤 모양으로 저장돼 있어도 앱이 쓸 수 있는 명단으로 정리 */
+  CC.normalizeRoster = function (raw) {
+    if (!raw || typeof raw !== 'object' || !raw.classes || typeof raw.classes !== 'object') return null;
+    const teacher = (CC.settings && CC.settings.teacherName) || '선생님';
+    const classes = {};
+    Object.keys(raw.classes).forEach(cid => {
+      const cls = raw.classes[cid];
+      if (!cls || !Array.isArray(cls.students) || !cid) return;
+      const seen = new Set();
+      const students = [];
+      cls.students.forEach(s => {
+        if (!s || s.name == null) return;
+        const name = String(s.name).trim().slice(0, 12);
+        if (!name) return;
+        const num = parseInt(s.num, 10);
+        if (!num || num < 1 || num > 999 || seen.has(num)) return;
+        seen.add(num);
+        students.push({ num, name });
+      });
+      if (!students.length) return;
+      students.sort((a, b) => a.num - b.num);
+      classes[String(cid).trim()] = { teacher: cls.teacher || teacher, students };
+    });
+    const ids = Object.keys(classes);
+    if (!ids.length) return null;
+    const active = (raw.activeClass && classes[raw.activeClass]) ? raw.activeClass : ids[0];
+    return { version: 3, activeClass: active, classes };
+  };
+
+  CC.rosterDB = (function () {
+    let client = null, sig = '';
+
+    function configured() {
+      const S = CC.settings || {};
+      return !!(S.supabaseUrl && S.supabaseKey && window.supabase && /^https?:\/\//.test(S.supabaseUrl));
+    }
+    function getClient() {
+      if (!configured()) return null;
+      const S = CC.settings;
+      const next = S.supabaseUrl + '|' + S.supabaseKey;
+      if (!client || sig !== next) {
+        try {
+          client = window.supabase.createClient(S.supabaseUrl, S.supabaseKey, {
+            auth: { persistSession: false, autoRefreshToken: false }
+          });
+          sig = next;
+        } catch (e) { client = null; sig = ''; return null; }
+      }
+      return client;
+    }
+
+    /* 서버가 응답하지 않을 때 화면이 멈추지 않도록 시간 제한 */
+    function limit(p, ms) {
+      return Promise.race([
+        Promise.resolve(p).catch(e => ({ error: { message: String((e && e.message) || e), code: 'exception' } })),
+        new Promise(resolve => setTimeout(() => resolve({ __timeout: true }), ms))
+      ]);
+    }
+
+    async function load() {
+      const c = getClient();
+      if (!c) return { ok: false, code: 'off' };
+      const r = await limit(
+        c.from(CC.ROSTER_TABLE).select('data, updated_at').eq('id', CC.ROSTER_ROW_ID).maybeSingle(),
+        8000
+      );
+      if (r && r.__timeout) return { ok: false, code: 'timeout' };
+      if (r && r.error) return { ok: false, code: r.error.code || 'error', message: r.error.message };
+      if (!r || !r.data || !r.data.data) return { ok: true, roster: null };
+      return { ok: true, roster: CC.normalizeRoster(r.data.data), updatedAt: r.data.updated_at };
+    }
+
+    async function save(roster) {
+      const c = getClient();
+      if (!c) return { ok: false, code: 'off' };
+      const norm = CC.normalizeRoster(roster || CC.roster);
+      if (!norm) return { ok: false, code: 'empty' };
+      const r = await limit(
+        c.from(CC.ROSTER_TABLE)
+          .upsert({ id: CC.ROSTER_ROW_ID, data: norm, updated_at: new Date().toISOString() }, { onConflict: 'id' })
+          .select('updated_at'),
+        10000
+      );
+      if (r && r.__timeout) return { ok: false, code: 'timeout' };
+      if (r && r.error) return { ok: false, code: r.error.code || 'error', message: r.error.message };
+      const row = Array.isArray(r && r.data) ? r.data[0] : (r && r.data);
+      return { ok: true, updatedAt: row && row.updated_at };
+    }
+
+    /* 화면에 보여 줄 한국어 설명 */
+    function message(res) {
+      const code = res && res.code;
+      if (code === 'off') return 'Supabase 연결 정보가 없어요';
+      if (code === 'timeout') return '서버 응답이 늦어요 (시간 초과)';
+      if (code === 'empty') return '명단 내용이 비어 있어요';
+      if (code === 'PGRST205' || code === '42P01') return '명단 저장 표가 아직 없어요';
+      if (code === '42501' || code === 'PGRST301') return '저장 권한이 없어요 (RLS 정책 확인)';
+      if (code === 'exception') return '네트워크 오류';
+      return (res && res.message) || '알 수 없는 오류';
+    }
+
+    return { configured, load, save, message };
+  })();
+
   /* 아바타 = 스프라이트 1~8번 (+ 이름표 색) */
   CC.myAvatar = CC.store.get(K.avatar, null) || { sp: 3 };
   CC.saveAvatar = function (v) {
