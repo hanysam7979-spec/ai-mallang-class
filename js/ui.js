@@ -79,8 +79,8 @@
     const meta = document.getElementById('me-meta');
     if (nameEl) nameEl.textContent = me.name;
     const cls = CC.roster.activeClass || '';
-    if (seatEl) seatEl.textContent = me.teacher ? '선생님' : (me.num ? me.num + '번' : '체험');
-    if (meta) meta.textContent = `${cls} · ${me.teacher ? '선생님' : (me.num ? me.num + '번' : '체험')} · ${me.name}`;
+    if (seatEl) seatEl.textContent = me.teacher ? '선생님' : (me.num ? me.num + '번' : '-');
+    if (meta) meta.textContent = `${cls} · ${me.teacher ? '선생님' : (me.num ? me.num + '번' : '-')} · ${me.name}`;
     const cn = document.getElementById('class-name');
     if (cn) cn.textContent = cls;
 
